@@ -1,0 +1,183 @@
+<html><head><base href="https://api.alternative.me/">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1a1a1a;
+    color: #fff;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #2d2d2d;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  h1 {
+    text-align: center;
+    color: #ffd700;
+    margin-bottom: 30px;
+  }
+
+  #chart {
+    width: 100%;
+    height: 600px;
+    margin-top: 20px;
+  }
+
+  .loading {
+    text-align: center;
+    font-size: 1.2em;
+    padding: 20px;
+  }
+
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>Bitcoin Fear & Greed Index - Historical Data</h1>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-color" style="background: #ff4444"></div>
+      <span>Extreme Fear (0-25)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #ffa500"></div>
+      <span>Fear (26-46)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #ffff00"></div>
+      <span>Neutral (47-54)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #00ff00"></div>
+      <span>Greed (55-75)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: #00ff7f"></div>
+      <span>Extreme Greed (76-100)</span>
+    </div>
+  </div>
+  <canvas id="chart"></canvas>
+</div>
+
+<script>
+async function fetchData() {
+  try {
+    const response = await fetch('https://api.alternative.me/fng/?limit=300');
+    const data = await response.json();
+    return data.data.reverse();
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    return [];
+  }
+}
+
+function getColor(value) {
+  value = parseInt(value);
+  if (value <= 25) return '#ff4444';
+  if (value <= 46) return '#ffa500';
+  if (value <= 54) return '#ffff00';
+  if (value <= 75) return '#00ff00';
+  return '#00ff7f';
+}
+
+async function createChart() {
+  const data = await fetchData();
+  
+  const ctx = document.getElementById('chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(item => new Date(item.timestamp * 1000).toLocaleDateString()),
+      datasets: [{
+        label: 'Fear & Greed Index',
+        data: data.map(item => item.value),
+        borderColor: data.map(item => getColor(item.value)),
+        backgroundColor: data.map(item => getColor(item.value) + '33'),
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: data.map(item => getColor(item.value)),
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 100,
+          grid: {
+            color: '#444'
+          },
+          ticks: {
+            color: '#fff'
+          }
+        },
+        x: {
+          grid: {
+            color: '#444'
+          },
+          ticks: {
+            color: '#fff',
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#fff'
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.raw;
+              let sentiment = '';
+              if (value <= 25) sentiment = 'Extreme Fear';
+              else if (value <= 46) sentiment = 'Fear';
+              else if (value <= 54) sentiment = 'Neutral';
+              else if (value <= 75) sentiment = 'Greed';
+              else sentiment = 'Extreme Greed';
+              return `Value: ${value} - ${sentiment}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+createChart();
+</script>
+</body></html>
